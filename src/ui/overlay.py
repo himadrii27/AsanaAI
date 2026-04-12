@@ -153,7 +153,7 @@ class Overlay:
         for i, item in enumerate(
             sorted(feedback.items, key=lambda x: x.priority)[:4]
         ):
-            icon  = "✓" if item.passed else "✗"
+            icon  = "[OK]" if item.passed else "[!!]"
             color = config.COLOR_CORRECT if item.passed else config.COLOR_INCORRECT
             text  = f"{icon} {item.message}"
             _put_text_with_bg(frame, text, (10, y_start + i * 35),
@@ -170,12 +170,17 @@ class Overlay:
 
     def _draw_exercise_name(self, frame: np.ndarray, name: str) -> None:
         h, w = frame.shape[:2]
+        # Active exercise – centred bottom
         _put_text_with_bg(
             frame, name.upper(),
             (w // 2 - 70, h - 20),
             scale=0.7, thick=2,
-            fg=config.COLOR_NEUTRAL,
+            fg=config.COLOR_ACCENT,
         )
+        # Keyboard hint strip top-right so user always knows how to switch
+        hints = "[1] Squat  [2] Push-Up  [3] Warrior  [r] Reset  [q] Quit"
+        _put_text_with_bg(frame, hints, (10, h - 20),
+                          scale=0.42, thick=1, fg=config.COLOR_NEUTRAL)
 
     def _draw_history(self, frame: np.ndarray, history: list[float]) -> None:
         if not history:
