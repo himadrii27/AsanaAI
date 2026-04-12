@@ -54,7 +54,7 @@ class Squat(BaseExercise):
         items.append(FeedbackItem(
             rule_id  = "squat_depth",
             passed   = avg_knee <= self.KNEE_DEPTH_THRESH or avg_knee >= 150,
-            message  = "Lower your hips – squat deeper",
+            message  = "Lower your hips - squat deeper",
             weight   = 2.0,
             priority = 1,
             joint_idx= LM.LEFT_KNEE,
@@ -65,7 +65,7 @@ class Squat(BaseExercise):
         items.append(FeedbackItem(
             rule_id  = "torso_upright",
             passed   = lean <= self.TORSO_LEAN_LIMIT,
-            message  = "Straighten your back – chest up",
+            message  = "Straighten your back - chest up",
             weight   = 2.0,
             priority = 2,
             joint_idx= LM.LEFT_SHOULDER,
@@ -84,7 +84,7 @@ class Squat(BaseExercise):
         items.append(FeedbackItem(
             rule_id  = "knee_alignment",
             passed   = not (left_cave or right_cave),
-            message  = "Push knees out – keep them over toes",
+            message  = "Push knees out - keep them over toes",
             weight   = 1.5,
             priority = 3,
             joint_idx= LM.LEFT_KNEE,
@@ -95,7 +95,7 @@ class Squat(BaseExercise):
         items.append(FeedbackItem(
             rule_id  = "shoulder_level",
             passed   = tilt <= self.SHOULDER_TILT_LIMIT,
-            message  = "Keep shoulders level – avoid leaning sideways",
+            message  = "Keep shoulders level - avoid leaning sideways",
             weight   = 1.0,
             priority = 4,
             joint_idx= LM.LEFT_SHOULDER,

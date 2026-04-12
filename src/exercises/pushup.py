@@ -51,7 +51,7 @@ class PushUp(BaseExercise):
         items.append(FeedbackItem(
             rule_id  = "pushup_depth",
             passed   = avg_elbow <= self.ELBOW_DEPTH_THRESH or avg_elbow >= 140,
-            message  = "Lower your chest – go deeper",
+            message  = "Lower your chest - go deeper",
             weight   = 2.0,
             priority = 1,
             joint_idx= LM.LEFT_ELBOW,
@@ -69,7 +69,7 @@ class PushUp(BaseExercise):
         items.append(FeedbackItem(
             rule_id  = "plank_alignment",
             passed   = plank_deviation <= self.PLANK_DEVIATION,
-            message  = "Keep your body in a straight line – don't sag your hips",
+            message  = "Keep your body in a straight line - don't sag your hips",
             weight   = 2.5,
             priority = 2,
             joint_idx= LM.LEFT_HIP,
@@ -87,7 +87,7 @@ class PushUp(BaseExercise):
         items.append(FeedbackItem(
             rule_id  = "elbow_flare",
             passed   = avg_flare <= self.ELBOW_FLARE_MAX,
-            message  = "Tuck your elbows – keep them closer to your body",
+            message  = "Tuck your elbows - keep them closer to your body",
             weight   = 1.5,
             priority = 3,
             joint_idx= LM.LEFT_ELBOW,
@@ -101,7 +101,7 @@ class PushUp(BaseExercise):
         items.append(FeedbackItem(
             rule_id  = "head_neutral",
             passed   = head_drop / (frame_h + 1e-8) < 0.08,
-            message  = "Keep your head neutral – don't drop your chin",
+            message  = "Keep your head neutral - don't drop your chin",
             weight   = 1.0,
             priority = 4,
             joint_idx= LM.NOSE,

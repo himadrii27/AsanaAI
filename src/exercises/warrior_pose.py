@@ -80,7 +80,7 @@ class WarriorPose(BaseExercise):
         items.append(FeedbackItem(
             rule_id  = "arms_extended",
             passed   = lo <= avg_arm <= hi,
-            message  = "Extend arms fully – parallel to the floor",
+            message  = "Extend arms fully - parallel to the floor",
             weight   = 1.5,
             priority = 3,
             joint_idx= LM.LEFT_SHOULDER,
@@ -91,7 +91,7 @@ class WarriorPose(BaseExercise):
         items.append(FeedbackItem(
             rule_id  = "torso_upright",
             passed   = lean <= self.TORSO_LEAN_LIMIT,
-            message  = "Keep your torso upright – don't lean forward",
+            message  = "Keep your torso upright - don't lean forward",
             weight   = 2.0,
             priority = 4,
             joint_idx= LM.LEFT_HIP,
@@ -102,7 +102,7 @@ class WarriorPose(BaseExercise):
         items.append(FeedbackItem(
             rule_id  = "shoulder_level",
             passed   = tilt <= self.HIP_TILT_LIMIT,
-            message  = "Relax your shoulders – keep them level",
+            message  = "Relax your shoulders - keep them level",
             weight   = 1.0,
             priority = 5,
             joint_idx= LM.LEFT_SHOULDER,
