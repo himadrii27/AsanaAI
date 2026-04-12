@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# Session data (user performance logs – keep off public repo)
+data/sessions/*.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Secrets / env files (never commit these)
+.env
+.env.*
+*.pem
+*.key
+
+# Model / dataset files (too large for git)
+*.pt
+*.pth
+*.onnx
+*.tflite
+*.h5
+*.pb
+assets/models/
