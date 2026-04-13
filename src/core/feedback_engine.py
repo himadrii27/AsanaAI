@@ -5,9 +5,11 @@ Rule-based feedback engine.
 
 Each exercise module pushes a list of FeedbackItem objects here.
 The engine:
-  1. Deduplicates and prioritises cues
-  2. Throttles repeated voice output via a cooldown timer
-  3. Computes an accuracy score (0–100) from rule pass/fail weights
+  1. Skips rules whose key joints are below visibility threshold (avoids false cues)
+  2. Deduplicates and prioritises cues
+  3. Throttles repeated voice output via per-rule + global cooldown
+  4. Computes an accuracy score (0-100) from rule pass/fail weights
+  5. Silences voice when form is already good (>= VOICE_SILENCE_ABOVE_ACCURACY)
 """
 
 from __future__ import annotations
@@ -15,6 +17,8 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 from typing import Optional
+
+import numpy as np
 
 import config
 
@@ -28,28 +32,31 @@ class FeedbackItem:
 
     Attributes
     ----------
-    rule_id    : unique string key for deduplication / cooldown tracking
-    passed     : True  → rule satisfied  (show in green)
-                 False → rule violated   (show in red)
-    message    : human-readable cue shown on screen and spoken aloud
-    weight     : how much this rule contributes to the accuracy score (default 1)
-    priority   : lower number = higher priority (spoken first)
-    joint_idx  : optional landmark index to highlight on the skeleton
+    rule_id          : unique string key for deduplication / cooldown tracking
+    passed           : True = rule satisfied (green), False = violated (red)
+    message          : human-readable cue shown on screen and spoken aloud
+    weight           : contribution to accuracy score (default 1)
+    priority         : lower number = higher priority (spoken first)
+    joint_idx        : optional landmark index to highlight on the skeleton
+    landmark_indices : landmark indices this rule depends on; if any have
+                       visibility < LANDMARK_VISIBILITY_THRESHOLD the rule
+                       is skipped entirely to avoid false positives
     """
-    rule_id:   str
-    passed:    bool
-    message:   str
-    weight:    float = 1.0
-    priority:  int   = 5
-    joint_idx: Optional[int] = None
+    rule_id:          str
+    passed:           bool
+    message:          str
+    weight:           float     = 1.0
+    priority:         int       = 5
+    joint_idx:        Optional[int]  = None
+    landmark_indices: list[int] = field(default_factory=list)
 
 
 @dataclass
 class FeedbackResult:
-    items:         list[FeedbackItem]
-    accuracy:      float              # 0.0 – 100.0
-    top_cue:       Optional[str]      # most important failing message
-    all_passed:    bool
+    items:      list[FeedbackItem]
+    accuracy:   float              # 0.0 - 100.0
+    top_cue:    Optional[str]      # most important failing message
+    all_passed: bool
 
 
 # ── Engine ─────────────────────────────────────────────────────────────────────
@@ -59,17 +66,51 @@ class FeedbackEngine:
     Usage
     -----
     engine  = FeedbackEngine()
-    result  = engine.evaluate(items)          # returns FeedbackResult
-    cue     = engine.next_voice_cue(result)   # returns cue string or None
+    result  = engine.evaluate(items, visibility)   # returns FeedbackResult
+    cue     = engine.next_voice_cue(result)        # returns cue string or None
     """
 
     def __init__(self) -> None:
-        self._last_spoken: dict[str, float] = {}   # rule_id → timestamp
+        self._last_spoken: dict[str, float] = {}   # rule_id -> timestamp
 
-    def evaluate(self, items: list[FeedbackItem]) -> FeedbackResult:
+    def evaluate(
+        self,
+        items:      list[FeedbackItem],
+        visibility: Optional[np.ndarray] = None,   # shape (33,) confidence scores
+    ) -> FeedbackResult:
+        """
+        Parameters
+        ----------
+        items      : rules produced by _check_form()
+        visibility : per-landmark confidence array from MediaPipe (optional).
+                     Rules whose landmark_indices contain a joint below
+                     LANDMARK_VISIBILITY_THRESHOLD are excluded from scoring.
+        """
         if not items:
             return FeedbackResult(items=[], accuracy=100.0,
                                   top_cue=None, all_passed=True)
+
+        # ── Visibility gating ──────────────────────────────────────────────────
+        if visibility is not None:
+            active = []
+            for item in items:
+                if item.landmark_indices:
+                    vis_scores = [float(visibility[i]) for i in item.landmark_indices]
+                    if min(vis_scores) < config.LANDMARK_VISIBILITY_THRESHOLD:
+                        # Joint occluded: treat as passed so it doesn't penalise score
+                        # but mark with a sentinel so overlay still renders normally
+                        active.append(FeedbackItem(
+                            rule_id          = item.rule_id,
+                            passed           = True,   # silent pass
+                            message          = item.message,
+                            weight           = item.weight,
+                            priority         = item.priority,
+                            joint_idx        = item.joint_idx,
+                            landmark_indices = item.landmark_indices,
+                        ))
+                        continue
+                active.append(item)
+            items = active
 
         total_weight  = sum(i.weight for i in items)
         passed_weight = sum(i.weight for i in items if i.passed)
@@ -77,7 +118,6 @@ class FeedbackEngine:
         accuracy   = 100.0 * passed_weight / (total_weight + 1e-8)
         all_passed = all(i.passed for i in items)
 
-        # highest-priority failing rule (lowest priority number)
         failing = sorted(
             (i for i in items if not i.passed),
             key=lambda i: i.priority,
@@ -93,14 +133,17 @@ class FeedbackEngine:
 
     def next_voice_cue(self, result: FeedbackResult) -> Optional[str]:
         """
-        Returns the top failing cue if its cooldown has expired, else None.
-        Internally records the timestamp so the same cue is not repeated
-        too rapidly (configurable via FEEDBACK_COOLDOWN_SEC).
+        Returns the top failing cue if:
+          1. Form is below VOICE_SILENCE_ABOVE_ACCURACY (no cues during good form)
+          2. Per-rule cooldown (FEEDBACK_COOLDOWN_SEC) has expired
         """
+        # Silence when form is good
+        if result.accuracy >= config.VOICE_SILENCE_ABOVE_ACCURACY:
+            return None
+
         if result.top_cue is None:
             return None
 
-        # find the matching item to get its rule_id
         item = next(
             (i for i in result.items
              if i.message == result.top_cue and not i.passed),
@@ -109,8 +152,8 @@ class FeedbackEngine:
         if item is None:
             return None
 
-        now     = time.time()
-        last    = self._last_spoken.get(item.rule_id, 0.0)
+        now      = time.time()
+        last     = self._last_spoken.get(item.rule_id, 0.0)
         cooldown = config.FEEDBACK_COOLDOWN_SEC
 
         if now - last >= cooldown:

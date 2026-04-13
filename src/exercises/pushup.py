@@ -4,10 +4,10 @@ pushup.py
 Rule-based push-up form checker.
 
 Biomechanical rules:
-  1. Elbow angle ≤ 95° at bottom (full range of motion)
-  2. Body plank – hips must stay inline with shoulders & ankles (< 20° deviation)
-  3. Head neutral – nose not too far above/below shoulder line
-  4. Elbow flare – elbows should not flare out beyond 55° from body
+  1. Elbow angle <= 95 at bottom (full range of motion)
+  2. Body plank - hips must stay inline with shoulders and ankles
+  3. Elbow flare - elbows should not flare out beyond 55 degrees from body
+  4. Head neutral - nose not too far above/below shoulder line
 """
 
 from __future__ import annotations
@@ -23,9 +23,9 @@ from src.exercises.base_exercise import BaseExercise, ExerciseState
 
 class PushUp(BaseExercise):
 
-    ELBOW_DEPTH_THRESH = 95.0    # degrees
-    PLANK_DEVIATION    = 20.0    # degrees from straight line
-    ELBOW_FLARE_MAX    = 55.0    # degrees from body
+    ELBOW_DEPTH_THRESH = 95.0
+    PLANK_DEVIATION    = 20.0
+    ELBOW_FLARE_MAX    = 55.0
 
     def __init__(self) -> None:
         super().__init__()
@@ -47,64 +47,65 @@ class PushUp(BaseExercise):
         re = ae.right_elbow(result)
         avg_elbow = (le + re) / 2.0
 
-        # ── Rule 1: Depth ────────────────────────────────────────────────────
+        # Rule 1: Depth
         items.append(FeedbackItem(
-            rule_id  = "pushup_depth",
-            passed   = avg_elbow <= self.ELBOW_DEPTH_THRESH or avg_elbow >= 140,
-            message  = "Lower your chest - go deeper",
-            weight   = 2.0,
-            priority = 1,
-            joint_idx= LM.LEFT_ELBOW,
+            rule_id          = "pushup_depth",
+            passed           = avg_elbow <= self.ELBOW_DEPTH_THRESH or avg_elbow >= 140,
+            message          = "Lower your chest - go deeper",
+            weight           = 2.0,
+            priority         = 1,
+            joint_idx        = LM.LEFT_ELBOW,
+            landmark_indices = [LM.LEFT_SHOULDER, LM.LEFT_ELBOW, LM.LEFT_WRIST,
+                                 LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW, LM.RIGHT_WRIST],
         ))
 
-        # ── Rule 2: Plank body line ─────────────────────────────────────────
+        # Rule 2: Plank body line
         mid_shoulder = midpoint(px[LM.LEFT_SHOULDER], px[LM.RIGHT_SHOULDER])
         mid_hip      = midpoint(px[LM.LEFT_HIP],      px[LM.RIGHT_HIP])
         mid_ankle    = midpoint(px[LM.LEFT_ANKLE],    px[LM.RIGHT_ANKLE])
-
         body_line_angle = angle_between(mid_shoulder, mid_hip, mid_ankle)
-        # 180° = perfectly straight; deviation is 180 - angle
         plank_deviation = abs(180.0 - body_line_angle)
 
         items.append(FeedbackItem(
-            rule_id  = "plank_alignment",
-            passed   = plank_deviation <= self.PLANK_DEVIATION,
-            message  = "Keep your body in a straight line - don't sag your hips",
-            weight   = 2.5,
-            priority = 2,
-            joint_idx= LM.LEFT_HIP,
+            rule_id          = "plank_alignment",
+            passed           = plank_deviation <= self.PLANK_DEVIATION,
+            message          = "Keep your body in a straight line - don't sag your hips",
+            weight           = 2.5,
+            priority         = 2,
+            joint_idx        = LM.LEFT_HIP,
+            landmark_indices = [LM.LEFT_SHOULDER, LM.LEFT_HIP, LM.LEFT_ANKLE,
+                                 LM.RIGHT_SHOULDER, LM.RIGHT_HIP, LM.RIGHT_ANKLE],
         ))
 
-        # ── Rule 3: Elbow flare ─────────────────────────────────────────────
-        ls = px[LM.LEFT_SHOULDER]; le_px = px[LM.LEFT_ELBOW]
-        rs = px[LM.RIGHT_SHOULDER]; re_px = px[LM.RIGHT_ELBOW]
-
-        # angle between shoulder→elbow vs shoulder→hip
-        left_flare  = angle_between(px[LM.LEFT_HIP],  ls, le_px)
-        right_flare = angle_between(px[LM.RIGHT_HIP], rs, re_px)
+        # Rule 3: Elbow flare
+        left_flare  = angle_between(px[LM.LEFT_HIP],  px[LM.LEFT_SHOULDER],  px[LM.LEFT_ELBOW])
+        right_flare = angle_between(px[LM.RIGHT_HIP], px[LM.RIGHT_SHOULDER], px[LM.RIGHT_ELBOW])
         avg_flare   = (left_flare + right_flare) / 2.0
 
         items.append(FeedbackItem(
-            rule_id  = "elbow_flare",
-            passed   = avg_flare <= self.ELBOW_FLARE_MAX,
-            message  = "Tuck your elbows - keep them closer to your body",
-            weight   = 1.5,
-            priority = 3,
-            joint_idx= LM.LEFT_ELBOW,
+            rule_id          = "elbow_flare",
+            passed           = avg_flare <= self.ELBOW_FLARE_MAX,
+            message          = "Tuck your elbows - keep them closer to your body",
+            weight           = 1.5,
+            priority         = 3,
+            joint_idx        = LM.LEFT_ELBOW,
+            landmark_indices = [LM.LEFT_SHOULDER, LM.LEFT_ELBOW,
+                                 LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW],
         ))
 
-        # ── Rule 4: Head neutral ─────────────────────────────────────────────
-        nose       = px[LM.NOSE]
-        mid_sh_y   = mid_shoulder[1]
-        head_drop  = abs(nose[1] - mid_sh_y)
-        frame_h    = result.landmarks_px.max()  # rough scale
+        # Rule 4: Head neutral
+        nose      = px[LM.NOSE]
+        mid_sh_y  = mid_shoulder[1]
+        head_drop = abs(nose[1] - mid_sh_y)
+        frame_h   = result.landmarks_px.max()
         items.append(FeedbackItem(
-            rule_id  = "head_neutral",
-            passed   = head_drop / (frame_h + 1e-8) < 0.08,
-            message  = "Keep your head neutral - don't drop your chin",
-            weight   = 1.0,
-            priority = 4,
-            joint_idx= LM.NOSE,
+            rule_id          = "head_neutral",
+            passed           = head_drop / (frame_h + 1e-8) < 0.08,
+            message          = "Keep your head neutral - don't drop your chin",
+            weight           = 1.0,
+            priority         = 4,
+            joint_idx        = LM.NOSE,
+            landmark_indices = [LM.NOSE, LM.LEFT_SHOULDER, LM.RIGHT_SHOULDER],
         ))
 
         return items
@@ -117,6 +118,5 @@ class PushUp(BaseExercise):
         self._counter.update(avg)
         phase    = self._counter.phase.name
 
-        items    = self._check_form(pose_result)
-        feedback = self._engine.evaluate(items)
+        feedback = self._evaluate(pose_result)
         return self._build_state(feedback, phase)

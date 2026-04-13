@@ -13,9 +13,18 @@ MP_MIN_DETECTION_CONF    = 0.7
 MP_MIN_TRACKING_CONF     = 0.6
 
 # ── Feedback ───────────────────────────────────────────────────────────────────
-FEEDBACK_COOLDOWN_SEC    = 2.5   # seconds between repeated voice cues
-VOICE_ENABLED            = True
-VOICE_RATE               = 160   # words per minute
+FEEDBACK_COOLDOWN_SEC         = 2.5   # seconds between repeated voice cues (per-rule)
+GLOBAL_VOICE_COOLDOWN_S       = 3.0   # hard floor: minimum gap between any two spoken cues
+VOICE_SILENCE_ABOVE_ACCURACY  = 85    # do not speak when form score >= this (form is good)
+VOICE_ENABLED                 = True
+VOICE_RATE                    = 160   # words per minute (pyttsx3 fallback)
+VOICE_NAME_SAY                = "Samantha"  # macOS 'say' voice
+
+# ── Pose confidence ────────────────────────────────────────────────────────────
+LANDMARK_VISIBILITY_THRESHOLD = 0.6   # skip rules whose joints are below this confidence
+
+# ── Exercise detection ─────────────────────────────────────────────────────────
+DETECTION_CONFIRMATION_FRAMES = 30    # frames of consistent detection before showing hint
 
 # ── Overlay colours (BGR) ─────────────────────────────────────────────────────
 COLOR_CORRECT   = (0,   220,  60)   # green
