@@ -71,7 +71,9 @@ class FeedbackEngine:
     """
 
     def __init__(self) -> None:
-        self._last_spoken: dict[str, float] = {}   # rule_id -> timestamp
+        self._last_spoken:  dict[str, float] = {}  # rule_id -> timestamp of last speak
+        self._speak_count:  dict[str, int]   = {}  # rule_id -> consecutive speak count
+        self._was_failing:  dict[str, bool]  = {}  # rule_id -> state last frame
 
     def evaluate(
         self,
@@ -122,11 +124,23 @@ class FeedbackEngine:
 
     def next_voice_cue(self, result: FeedbackResult) -> Optional[str]:
         """
-        Returns the top failing cue if:
-          1. Form is below VOICE_SILENCE_ABOVE_ACCURACY (no cues during good form)
-          2. Per-rule cooldown (FEEDBACK_COOLDOWN_SEC) has expired
+        Returns the top failing cue using exponential backoff so the same
+        correction isn't repeated too rapidly:
+          - 1st reminder : after FEEDBACK_COOLDOWN_SEC  (default 5s)
+          - 2nd reminder : after 10s
+          - 3rd+ reminder: after 20s
+        Backoff resets automatically when the user fixes the form.
+        Stays silent when accuracy >= VOICE_SILENCE_ABOVE_ACCURACY.
         """
-        # Silence when form is good
+        # Update pass/fail state for all rules so backoff resets on correction
+        for item in result.items:
+            prev_failing = self._was_failing.get(item.rule_id, False)
+            now_failing  = not item.passed
+            if prev_failing and not now_failing:
+                # Rule just got fixed — reset its backoff counter
+                self._speak_count[item.rule_id] = 0
+            self._was_failing[item.rule_id] = now_failing
+
         if result.accuracy >= config.VOICE_SILENCE_ABOVE_ACCURACY:
             return None
 
@@ -141,12 +155,16 @@ class FeedbackEngine:
         if item is None:
             return None
 
-        now      = time.time()
-        last     = self._last_spoken.get(item.rule_id, 0.0)
-        cooldown = config.FEEDBACK_COOLDOWN_SEC
+        # Exponential backoff: 5s → 10s → 20s (capped)
+        count    = self._speak_count.get(item.rule_id, 0)
+        cooldown = min(config.FEEDBACK_COOLDOWN_SEC * (2 ** count), 20.0)
+
+        now  = time.time()
+        last = self._last_spoken.get(item.rule_id, 0.0)
 
         if now - last >= cooldown:
             self._last_spoken[item.rule_id] = now
+            self._speak_count[item.rule_id] = count + 1
             return result.top_cue
 
         return None

@@ -13,7 +13,7 @@ MP_MIN_DETECTION_CONF    = 0.7
 MP_MIN_TRACKING_CONF     = 0.6
 
 # ── Feedback ───────────────────────────────────────────────────────────────────
-FEEDBACK_COOLDOWN_SEC         = 2.5   # seconds between repeated voice cues (per-rule)
+FEEDBACK_COOLDOWN_SEC         = 5.0   # base cooldown for exponential backoff (5s → 10s → 20s)
 GLOBAL_VOICE_COOLDOWN_S       = 3.0   # hard floor: minimum gap between any two spoken cues
 VOICE_SILENCE_ABOVE_ACCURACY  = 95    # do not speak when form score >= this (form is good)
 VOICE_ENABLED                 = True
