@@ -15,7 +15,7 @@ MP_MIN_TRACKING_CONF     = 0.6
 # ── Feedback ───────────────────────────────────────────────────────────────────
 FEEDBACK_COOLDOWN_SEC         = 2.5   # seconds between repeated voice cues (per-rule)
 GLOBAL_VOICE_COOLDOWN_S       = 3.0   # hard floor: minimum gap between any two spoken cues
-VOICE_SILENCE_ABOVE_ACCURACY  = 85    # do not speak when form score >= this (form is good)
+VOICE_SILENCE_ABOVE_ACCURACY  = 95    # do not speak when form score >= this (form is good)
 VOICE_ENABLED                 = True
 VOICE_RATE                    = 160   # words per minute (pyttsx3 fallback)
 VOICE_NAME_SAY                = "Samantha"  # macOS 'say' voice

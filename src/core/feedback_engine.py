@@ -91,26 +91,15 @@ class FeedbackEngine:
                                   top_cue=None, all_passed=True)
 
         # ── Visibility gating ──────────────────────────────────────────────────
+        # Rules whose key joints are occluded are excluded entirely so they
+        # don't artificially inflate the accuracy score (which would silence voice).
         if visibility is not None:
-            active = []
-            for item in items:
-                if item.landmark_indices:
-                    vis_scores = [float(visibility[i]) for i in item.landmark_indices]
-                    if min(vis_scores) < config.LANDMARK_VISIBILITY_THRESHOLD:
-                        # Joint occluded: treat as passed so it doesn't penalise score
-                        # but mark with a sentinel so overlay still renders normally
-                        active.append(FeedbackItem(
-                            rule_id          = item.rule_id,
-                            passed           = True,   # silent pass
-                            message          = item.message,
-                            weight           = item.weight,
-                            priority         = item.priority,
-                            joint_idx        = item.joint_idx,
-                            landmark_indices = item.landmark_indices,
-                        ))
-                        continue
-                active.append(item)
-            items = active
+            items = [
+                item for item in items
+                if not item.landmark_indices
+                or min(float(visibility[i]) for i in item.landmark_indices)
+                   >= config.LANDMARK_VISIBILITY_THRESHOLD
+            ]
 
         total_weight  = sum(i.weight for i in items)
         passed_weight = sum(i.weight for i in items if i.passed)
